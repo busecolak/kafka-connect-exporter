@@ -1,6 +1,6 @@
 # Kafka Connect JMX Prometheus Exporter
 
-This repo contains Kafka, Kafka Connect and Prometheus containers. JMX metrics from Kafka Connect service are exposed with the prometheus jmx exporter. Hazelcast built-in JMX Prometheus Agent is also tested for JMX and JMX Hazelcast metrics.
+This repo contains Kafka, Kafka Connect, Hazelcast and Prometheus containers. JMX metrics from Kafka Connect service are exposed with the prometheus jmx exporter. Hazelcast built-in JMX Prometheus Agent is also tested for JMX and JMX Hazelcast metrics.
 
 # Kafka Connect
 Kafka Connect service is configured as FileStream Source Connector using a Kafka base image with the prometheus jmx exporter installed.
