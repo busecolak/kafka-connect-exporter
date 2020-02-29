@@ -1,0 +1,8 @@
+:$PUBLISHED_PORT {
+    proxy / $TARGET_IP:$TARGET_PORT {
+        transparent
+    }
+
+    errors stderr
+    tls off
+}

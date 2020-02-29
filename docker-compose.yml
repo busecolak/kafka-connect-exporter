@@ -1,0 +1,108 @@
+version: "3.3"
+
+volumes:
+  prometheus_data:
+  kafka_data:
+  zk1_data:
+  zk1_datalog:
+  connect:
+
+services:
+  prometheus:
+    image: "prometheus"
+    container_name: prometheus
+    build:
+      context: ./prometheus
+      dockerfile: Dockerfile
+    volumes:
+      - prometheus_data:/prometheus
+    ports:
+      - published: 9090
+        target: 9090
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+
+  caddy:
+    image: "caddy"
+    container_name: caddy
+    restart: on-failure:2
+    build:
+      context: ./kafka-connect-jmx-exporter
+      dockerfile: Dockerfile
+    environment:
+      TARGET_IP: kafka-connect
+      PUBLISHED_PORT: 7072
+    ports:
+      - published: 7073
+        target: 7072
+
+  zookeeper:
+    image: zookeeper:3.4.12
+    hostname: zookeeper
+    container_name: zookeeper
+    environment:
+      ZOO_MY_ID: 1
+      ZOO_SERVERS: server.1=0.0.0.0:2888:3888
+    volumes:
+      - zk1_data:/data
+      - zk1_datalog:/datalog
+    ports:
+      - published: 2181
+        target: 2181
+
+  kafka:
+    image: "kafka"
+    hostname: kafka
+    container_name: kafka
+    build:
+      context: ./kafka
+      dockerfile: Dockerfile
+    ports:
+      - published: 9092
+        target: 9092
+      - published: 7071
+        target: 7071
+    environment:
+      KAFKA_LISTENERS: LISTENER_DOCKER_INTERNAL://:19092, LISTENER_DOCKER_EXTERNAL://:9092
+      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://kafka:19092,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-kafka}:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_CREATE_TOPICS: "simple-connect:1:1"
+      KAFKA_BROKER_ID: 1
+      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_OPTS: "-javaagent:/opt/kafka/libs/jmx_prometheus_javaagent.jar=7071:/opt/kafka/config/jmx_exporter_config.yml"
+    volumes:
+      - kafka_data:/kafka
+
+  kafka-connect:
+    image: "kafka-connect"
+    container_name: kafka-connect
+    build:
+      context: ./kafka-connect
+      dockerfile: Dockerfile
+    ports:
+      - published: 8083
+        target: 8083
+      - published: 7072
+        target: 7072
+    environment:
+      KAFKA_OPTS: "-javaagent:/opt/kafka/libs/jmx_prometheus_javaagent.jar=7072:/opt/kafka/config/jmx_exporter_config.yml"
+    depends_on:
+      - kafka
+    volumes:
+      - connect:/tmp
+
+  hazelcast:
+    image: hazelcast/hazelcast:3.12.3
+    hostname: hazelcast
+    container_name: hazelcast
+    environment:
+      PROMETHEUS_PORT: 9114
+      JAVA_OPTS: '-Dhazelcast.jmx=true'
+    ports:
+      - published: 5701
+        target: 5701
+      - published: 9114
+        target: 9114

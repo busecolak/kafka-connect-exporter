@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+
+  external_labels:
+    monitor: "connect"
+
+scrape_configs: 
+  - job_name: kafka-jmx-metrics
+    static_configs:
+      - targets:
+        - kafka:7071
+  
+  - job_name: kafka-connect-jmx-metrics
+    static_configs:
+      - targets:
+        - kafka-connect:7072
+
+  - job_name: hazelcast-jmx-metrics
+    static_configs:
+      - targets:
+        - hazelcast:9114
+            
